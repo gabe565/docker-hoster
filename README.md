@@ -7,7 +7,7 @@ hoster is intended to run in a Docker container:
     docker run -d \
         -v /var/run/docker.sock:/tmp/docker.sock \
         -v /etc/hosts:/tmp/hosts \
-        gabe565/docker-hoster
+        registry.gitlab.com/gabe565/docker-hoster
 
 The `/tmp/docker.sock` is mounted to allow hoster to listen for Docker events and automatically register container's IP.
 
