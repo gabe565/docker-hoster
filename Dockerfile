@@ -1,11 +1,12 @@
-FROM frolvlad/alpine-python3
+FROM alpine
 
-RUN pip3 install docker
-RUN mkdir /hoster
-WORKDIR /hoster
-ADD hoster.py /hoster/
+RUN apk add --no-cache \
+        bash \
+        curl \
+        jq \
+    && rm -rf /var/cache/apk/*
 
-CMD ["python3", "-u", "hoster.py"]
+WORKDIR /app
+COPY hoster.sh /app/
 
-
-
+CMD ["bash", "/app/hoster.sh"]
