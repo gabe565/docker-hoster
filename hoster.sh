@@ -1,5 +1,4 @@
 #!/bin/bash
-set -euo pipefail
 
 readonly \
     BEGINNING_PATTERN='#-----------Docker-Hoster-Domains----------#' \
@@ -88,6 +87,7 @@ _saveToHosts() {
 }
 
 _main() {
+    set -euo pipefail
     trap '_handle' SIGINT SIGTERM
 
     _log 'Adding all containers to "%s"' "$FILE"
@@ -96,7 +96,6 @@ _main() {
         while read -r event; do
             _log 'Change triggered due to %s' \
                 "$(jq -r '"\(.Action) event on \"\(.Actor.Attributes.name)\""' <<< "$event")"
-            sleep 1
             _buildLines "$(jq -r .id <<< "$event")"
         done < <(_events)
     done
