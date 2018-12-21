@@ -59,7 +59,7 @@ _sanitizeRegex() {
 }
 
 _buildLines() {
-    local ids="${@:-$(_containerIds)}"
+    local ids="${*:-$(_containerIds)}"
     for id in $ids; do
         hostLine="$(_buildHostLine "$id")"
         if [[ -n "$hostLine" ]]; then
@@ -105,6 +105,6 @@ _main() {
     done
 }
 
-if [[ "$0" = "$BASH_SOURCE" ]]; then
+if [[ "$0" = "${BASH_SOURCE[0]}" ]]; then
     _main "$@"
 fi
