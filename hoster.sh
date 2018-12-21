@@ -6,6 +6,8 @@ readonly \
     FILE="${FILE:-/tmp/hosts}"\
     SOCKET="${SOCKET:-/tmp/docker.sock}"
 
+export DOCKER_HOST="unix://$SOCKET"
+
 declare -A hostLines=()
 
 _log () {
@@ -16,44 +18,33 @@ _log () {
 
 _handle() {
     _log 'Removing all containers from "%s"' "$FILE"
-    _removeFromHosts
+    _defaultHosts -w
     exit 0
 }
 
-_query() {
-    local endpoint="$1"
-    shift
-    curl -G -X GET --silent \
-        --unix-socket "$SOCKET" "$@" \
-        "http://localhost/$endpoint"
-}
-
-_containers() {
-    _query containers/json \
-        --fail --data-urlencode \
-            'filters={"status":["running"]}'
-}
-
 _containerIds() {
-    _containers | jq -r .[].Id
+    docker ps \
+        --filter 'status=running' \
+        --format '{{.ID}}'
 }
 
 _events() {
-    _query events \
-        --fail --data-urlencode \
-            'filters={"event":["die","kill","pause","restart","start","stop","unpause"],"type":["container"]}'
-}
-
-_inspect() {
-    _query "containers/$1/json"
+    docker events \
+        --filter 'type=container' \
+        --filter 'event=die' \
+        --filter 'event=kill' \
+        --filter 'event=pause' \
+        --filter 'event=restart' \
+        --filter 'event=start' \
+        --filter 'event=stop' \
+        --filter 'event=unpause' \
+        --format '{{json .}}'
 }
 
 _buildHostLine() {
-    jq -r '(.Name | sub("^/";"")) as $name
-        | .NetworkSettings.Networks
-        | ..
-        | select(.IPAddress? != null and .IPAddress? != "")
-        | "\(.IPAddress)\t\($name) \(try (.Aliases | join(" ")) catch "")"'
+    docker inspect \
+        --format $'{{range .NetworkSettings.Networks}}{{.IPAddress}} {{index (split $.Name "/") 1}} {{join .Aliases " "}}\n{{end}}' \
+        "$1"
 }
 
 _sanitizeRegex() {
@@ -61,11 +52,11 @@ _sanitizeRegex() {
 }
 
 _buildLines() {
-    local ids="${1:-$(_containerIds)}"
+    local ids="${@:-$(_containerIds)}"
     for id in $ids; do
-        inspect="$(_inspect "$id")"
-        if jq -e .State.Running <<< "$inspect" >/dev/null; then
-            hostLines["_$id"]="$(_buildHostLine <<< "$inspect")"
+        hostLine="$(_buildHostLine "$id")"
+        if [[ -n "$hostLine" ]]; then
+            hostLines["_$id"]="$hostLine"
         else
             unset hostLines["_$id"]
         fi
@@ -73,17 +64,22 @@ _buildLines() {
     _saveToHosts
 }
 
-_removeFromHosts() {
+_defaultHosts() {
     local contents
-    contents="$(<"${FILE}")"
-    sed -n "/$(_sanitizeRegex <<< "$BEGINNING_PATTERN")/q;p" <<< "$contents" | sed '${/^$/d;}' > "$FILE"
+    contents="$(sed -n "/$(_sanitizeRegex <<< "$BEGINNING_PATTERN")/q;p" < "$FILE" | sed '${/^$/d;}')"
+    case "${1:-}" in
+        -w)
+            printf '%s\n' "$contents" > "$FILE" ;;
+        *)
+            printf '%s' "$contents" ;;
+    esac
 }
 
 _saveToHosts() {
-    local lines
+    local defaultHosts lines
+    defaultHosts="$(_defaultHosts)"
     lines="$(printf '%s\n' "${hostLines[@]}" | grep .)"
-    _removeFromHosts
-    printf "\n%s\n%s\n%s\n" "$BEGINNING_PATTERN" "$lines" "$ENDING_PATTERN" >> "$FILE"
+    printf "%s\n\n%s\n%s\n%s\n" "$defaultHosts" "$BEGINNING_PATTERN" "$lines" "$ENDING_PATTERN" > "$FILE"
 }
 
 _main() {
@@ -92,6 +88,7 @@ _main() {
 
     _log 'Adding all containers to "%s"' "$FILE"
     _buildLines
+    _log 'Listening for events'
     while true; do
         while read -r event; do
             _log 'Change triggered due to %s' \
