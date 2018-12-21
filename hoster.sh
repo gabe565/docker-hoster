@@ -47,7 +47,7 @@ _buildHostLine() {
         $'
         {{- range .NetworkSettings.Networks -}}
             {{- if .IPAddress -}}
-                {{- .IPAddress }} {{index (split $.Name "/") 1}} {{join .Aliases " "}}{{ println -}}
+                {{- .IPAddress }}\t{{index (split $.Name "/") 1}}\t{{join .Aliases "\t"}}{{ println -}}
             {{- end -}}
         {{- end -}}
         ' \
