@@ -43,7 +43,14 @@ _events() {
 
 _buildHostLine() {
     docker inspect \
-        --format $'{{range .NetworkSettings.Networks}}{{.IPAddress}} {{index (split $.Name "/") 1}} {{join .Aliases " "}}\n{{end}}' \
+        --format \
+        $'
+        {{- range .NetworkSettings.Networks -}}
+            {{- if .IPAddress -}}
+                {{- .IPAddress }} {{index (split $.Name "/") 1}} {{join .Aliases " "}}{{ println -}}
+            {{- end -}}
+        {{- end -}}
+        ' \
         "$1"
 }
 
