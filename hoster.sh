@@ -16,7 +16,7 @@ _log () {
     printf "[%s] $format\n" "$(date +'%Y-%m-%d %H:%M:%S')" "$@" >&2
 }
 
-_handle() {
+_onExit() {
     _log 'Removing all containers from "%s"' "$FILE"
     _defaultHosts -w
     exit 0
@@ -61,8 +61,7 @@ _sanitizeRegex() {
 _buildLines() {
     local ids="${*:-$(_containerIds)}"
     for id in $ids; do
-        hostLine="$(_buildHostLine "$id")"
-        if [[ -n "$hostLine" ]]; then
+        if hostLine="$(_buildHostLine "$id" 2>/dev/null)"; then
             hostLines["_$id"]="$hostLine"
         else
             unset hostLines["_$id"]
@@ -90,8 +89,11 @@ _saveToHosts() {
 }
 
 _main() {
-    set -euo pipefail
-    trap '_handle' SIGINT SIGTERM
+    set -o errexit
+    set -o nounset
+    set -o pipefail
+    IFS=$'\n\t'
+    trap '_onExit' SIGINT SIGTERM
 
     _log 'Adding all containers to "%s"' "$FILE"
     _buildLines
