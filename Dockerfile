@@ -1,6 +1,6 @@
 FROM alpine
 
-ARG DOCKER_VERSION=18.09.0
+ARG DOCKER_VERSION=18.09.3
 
 RUN set -x \
     && apk add \
