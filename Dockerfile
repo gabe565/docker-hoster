@@ -1,7 +1,7 @@
 FROM alpine
 LABEL maintainer="Gabe Cook <gabe565@gmail.com>"
 
-ARG DOCKER_VERSION=18.09.3
+ARG DOCKER_VERSION=18.09.6
 
 RUN set -x \
     && apk add \
